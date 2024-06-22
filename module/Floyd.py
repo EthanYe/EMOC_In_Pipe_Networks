@@ -1,6 +1,6 @@
 
 import numpy as np
-
+from module.myfun import *
 
 
 def shortest_paths(weighted_adjacent_matrix, sensors, unknowns):

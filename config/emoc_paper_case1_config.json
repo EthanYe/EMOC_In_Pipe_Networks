@@ -1,0 +1,64 @@
+{
+    "control parameters": {
+        "time step": 0.01,
+        "total time": 10,
+        "gravity": 9.81,
+        "friction factor": "f",
+        "wn": 2.019
+    },
+    "pipes": [{
+            "id": 0,
+            "js": 0,
+            "je": 1,
+            "wavespeed": 1000,
+            "diameter": 0.2,
+            "length": 100,
+            "f": 0.02,
+            "zeta1": 0.0,
+            "zeta2": 0.0
+        }, {
+            "id": 1,
+            "js": 1,
+            "je": 2,
+            "wavespeed": 1000,
+            "diameter": 0.2,
+            "length": 100,
+            "f": 0.02,
+            "zeta1": 0.0,
+            "zeta2": 0.0
+        }, {
+            "id": 2,
+            "js": 2,
+            "je": 3,
+            "wavespeed": 1000,
+            "diameter": 0.2,
+            "length": 150,
+            "f": 0.02,
+            "zeta1": 0.0,
+            "zeta2": 0.0
+        }, {
+            "id": 3,
+            "js": 3,
+            "je": 4,
+            "wavespeed": 1000,
+            "diameter": 0.2,
+            "length": 150,
+            "f": 0.02,
+            "zeta1": 0.0,
+            "zeta2": 0.0
+        }
+    ],
+    "reservoirs": [{
+       "id": 0,
+       "node": 0,
+       "water level": 50
+    }
+],
+"end valve": [{
+    "id": 0,
+    "node": 4,
+    "motion": "udf",
+    "closingTime": 5,
+    "Q0": 0.1
+}]
+}

@@ -1,12 +1,13 @@
 import pickle
 from module.transient_model import *
 from module.components import *
+from module.myfun import *
 from module.Floyd import *
-
+import os.path as osp
 
 class EMOC():
     def __init__(self, sensors, unknowns, name='EMOC_model', dataname=None,  model=None,mode=None,noise=0, parameter_changed_pipes=None, sensor_data=None,ini_data=None,ini_data_name=None,
-                 sensor_data_name=None,extra_sensor=None,extra_sensor_data=None,extra_name=''):
+                 sensor_data_name=None,extra_sensor=None,extra_sensor_data=None):
         self.name = name # name of pipe network model
         self.sensors=sensors # sensor locations
         self.unknowns=unknowns # unknown boundary conditions
@@ -18,16 +19,18 @@ class EMOC():
         self.sensor_data_name = sensor_data_name
         self.extra_sensor = extra_sensor #
         self.extra_sensor_data = extra_sensor_data
-        self.extra_name=extra_name
+        self.isSteady=False
         # load pipe network model
         if model is None:
             a_file = open(data_root_path + self.name + "_class.pkl", "rb")
-
             self.model = model = pickle.load(a_file)
         else:
             self.model = model
         # get the shorest paths from sensors to unknown boundaries
         self.node_routes=node_routes=shortest_paths(model.weighted_adjacency_matrix,sensors,unknowns)
+        self.sensor_name=''
+        for i in self.sensors:
+            self.sensor_name = self.sensor_name+str(i)
         # create uncertainty by changing the parameters of specific pipes (default is None)
         # if len(parameter_changed_pipes):
            
@@ -100,30 +103,28 @@ class EMOC():
         nsensor = self.nsensor
         # fetch sensor data
         steps = self.steps
+        
+        # The data has the list type of shape [pipe number][2*pipe reaches][time steps]. The 2nd dim of length 2*pipe reaches represents [head 1, flow 1, head 2, flow 2, ..., ...]
+        
+        if self.dataname != None:
+            
+            loaded_data=np.load(data_root_path + self.dataname +'id'+str(self.model.id) + '_pipes_data.npz')
+            for i in range(self.model.n_pipe):
+                array_name = f'pipe{i}'
+                loaded_array = loaded_data[array_name][:,1:]
+                self.data.append(loaded_array)
+        else:
+            loaded_data=np.load(data_root_path + self.name+'_pipes_data.npz')
+            for i in range(self.model.n_pipe):
+                array_name = f'pipe{i}'
+                loaded_array = loaded_data[array_name][:,1:]
+                self.data.append(loaded_array)
         if self.sensor_data is not None:
         #     self.steps=self.model.steps=self.sensor_data.shape[1]
             if self.mode == 'delta':
                 for i in range(nsensor):
                     self.sensor_data[i]-=self.sensor_data[i][0]
             return
-        # The data has the list type of shape [pipe number][2*pipe reaches][time steps]. The 2nd dim of length 2*pipe reaches represents [head 1, flow 1, head 2, flow 2, ..., ...]
-        
-        if self.dataname != None:
-            
-            loaded_data=np.load(data_root_path + self.dataname + '_nodes_data.npz')
-            for i in range(self.model.n_pipe):
-                array_name = f'node{i}'
-                loaded_array = loaded_data[array_name][:,1:]
-                self.data.append(loaded_array)
-        else:
-            loaded_data=np.load(data_root_path + self.name+ '_pipes_data.npz')
-            for i in range(self.model.n_pipe):
-                array_name = f'pipe{i}'
-                loaded_array = loaded_data[array_name][:,1:]
-                self.data.append(loaded_array)
-        if self.mode == 'delta':
-            self.data[i] -= self.data[i][0]
-        
  
         self.sensor_data = np.zeros((nsensor, steps))
         for i in range(nsensor):
@@ -131,10 +132,10 @@ class EMOC():
                 for pipe in self.pipes:
                     if pipe.js==self.node_routes[i][0]:
                         self.sensor_data[i] = self.data[pipe.id
-                                                        ][:, 0][:steps] + np.random.random(steps) * self.noise
+                                                        ][:, 0][:steps] + self.noise[i]
                     elif pipe.je==self.node_routes[i][0]:
                         self.sensor_data[i] = self.data[pipe.id
-                                                        ][:, -2][:steps] + np.random.random(steps) * self.noise
+                                                        ][:, -2][:steps] +  self.noise[i]
             
             elif self.sensors[i] == self.pipes[self.pipe_routes[i][0]].js:
                 self.sensor_data[i] = self.data[self.pipe_routes[i][0]
@@ -143,6 +144,7 @@ class EMOC():
                 self.sensor_data[i] = self.data[self.pipe_routes[i][0]][:, -
                                                                         2][:steps] + np.random.random(steps) * self.noise
             if self.mode == 'delta':
+                self.sensor_data[i][0]*=1.05
                 self.sensor_data[i]-=self.sensor_data[i][0]
     
     def emoc(self):
@@ -151,26 +153,77 @@ class EMOC():
         # get the front by using Nan at unknown boundaries as tracers
         self.delta_new_front = np.zeros(self.nsensor, dtype="int")
         self.find_front()
-        self.print_front("1st find front")
+        # self.print_front("1st find front")
         # update front if the sensor nodes and branch nodes are failed to meet the requirements
         self.update_front()
         
         # input the data of initial condition
         self.input_initial_condition()
+        
+        self.front_checking()
+        # exit(0)
+        # initialize the head and flow in the known zone (beneath the first front)
+        
+        # get the maximum and minimum levels of the front
+        self.min_front, self.max_front = self.min_max_front()
+        # the maximum time steps for plotting
+        self.plotSteps = self.steps - (self.max_front - self.min_front)
+        '''EMOC loop body, including Step 1, Step 2, and Step 3'''
+        if (not self.isSteady) and (self.mode==''):
+            # self.sensor_data[0][0]=0
+            # self.sensor_data[1][0]=0
+            # stdh=0
+            # stdq=0
+            # for pipe in self.pipes:
+            #         stdh+=np.var(pipe.hi[0])
+            #         stdq+=np.var(pipe.qi[0])
+            # print("Stand variation: ", stdh,stdq)
+            # print('----------------------------------------------------')
+            # if stdq>1e-25:  
+            for i in range(30):
+                self.initialize_solvable_region(steady=True)
+                self.emoc_loop(steady=True)
+                stdh=0
+                stdq=0
+                for pipe in self.pipes:
+                    stdh+=np.var(pipe.hi[self.plotSteps-1])
+                    stdq+=np.var(pipe.qi[self.plotSteps-1])
+                    pipe.qi[0, :] =pipe.qi[self.plotSteps-1, :]
+                    pipe.hi[0, :] = pipe.hi[self.plotSteps-1, :] # ::2 is the index of head
+                print('The '+str(i+1)+'st steady state calculation completed')
+                print("Stand variation: ", stdh,stdq)
+                print('----------------------------------------------------')
+                if stdq<1e-25:
+                    break
+            if i>1:
+                self.saveInitialConditions()
+            self.isSteady = True
+        
+        self.initialize_solvable_region()
+        self.emoc_loop()
+    
+    def saveInitialConditions(self):
+        self.pipesDataH = {}
+        self.pipesDataQ = {}
+        
+        for pipe in self.pipes:
+
+            pipeDataQ = pipe.qi[0]
+            pipeDataH = pipe.hi[0]
+
+            self.pipesDataH['pipeH'+str(pipe.id)]=pipeDataH
+            self.pipesDataQ['pipeQ'+str(pipe.id)]=pipeDataQ
+        # self.nodesData['demandNode']=self.demands[0].node.id
+        # self.nodesData['demandSize']=self.demands[0].cda2g0
+        np.savez(data_root_path+self.name+self.sensor_name+'_pipes_steady_dataH.npz',**self.pipesDataH)
+        np.savez(data_root_path+self.name+self.sensor_name+'_pipes_steady_dataQ.npz',**self.pipesDataQ)
+
+    def emoc_loop(self,steady=False):  
         model = self.model
         pipes = self.pipes
         nPipes = self.nPipes
         sensor_data = self.sensor_data
-        self.front_checking()
-        # exit(0)
-        # initialize the head and flow in the known zone (beneath the first front)
-        self.initialize_known_zone()
-        # get the maximum and minimum levels of the front
-        min_front, max_front = self.min_max_front()
-        # the maximum time steps for plotting
-        self.plotSteps = self.steps - (max_front - min_front)
-        '''EMOC loop body, including Step 1, Step 2, and Step 3'''
-        for ti in range(1, self.steps - max_front):
+        for ti in range(1, self.steps - self.max_front):
             for kk, pipe_route in enumerate(self.pipe_routes):
                 '''Step 1: update sensor node'''
                 # sensor node
@@ -188,7 +241,10 @@ class EMOC():
                 else:  # the sensor is at the end of the pipe
                     front_t = pipe.front_t[-1] + ti
                 # calculate the flow at the sensor node
-                sensor_h = sensor_data[kk][front_t]
+                if steady:
+                    sensor_h = sensor_data[kk][0]
+                else:
+                    sensor_h = sensor_data[kk][front_t]
                 if node.type == BD.Series:
                     
                     if node.pipes[0]==pipe:
@@ -202,13 +258,13 @@ class EMOC():
                             NN = previousPipe.NN
                             # C+ line
                             previousPipe.qi[front_t, NN] = previousPipe.QCPi(
-                                front_t, NN) - previousPipe.CQPi(front_t, NN) * sensor_data[kk][front_t]
+                                front_t, NN) - previousPipe.CQPi(front_t, NN) * sensor_h
                             pipe.qi[front_t, 0] = previousPipe.qi[front_t,NN]
                         else: # known pipe (previousPipe) <- sensor -> unknown pipe (pipe2),node.n_ep=2
                             previousPipe.hi[front_t, 0] = pipe.hi[front_t, 0]
                             # C- line
                             previousPipe.qi[front_t, 0] = previousPipe.QCMi(
-                                front_t, 0) + previousPipe.CQMi(front_t, 0) * sensor_data[kk][front_t]
+                                front_t, 0) + previousPipe.CQMi(front_t, 0) * sensor_h
                             pipe.qi[front_t, 0] = -previousPipe.qi[front_t,0]
                     elif pipe.dire == -1:  # sensor <- unknown pipe
                         pipe.hi[front_t, pipe.NN] = sensor_h
@@ -216,25 +272,25 @@ class EMOC():
                             previousPipe.hi[front_t, 0] = sensor_h
                             # C- line
                             previousPipe.qi[front_t, 0] = previousPipe.QCMi(
-                                front_t, 0) + previousPipe.CQMi(front_t, 0) * sensor_data[kk][front_t]
+                                front_t, 0) + previousPipe.CQMi(front_t, 0) * sensor_h
                             pipe.qi[front_t, pipe.NN] = previousPipe.qi[front_t, 0]
                         else: # known pipe (previousPipe) -> sensor <- unknown pipe (pipe2)
                             previousPipe.hi[front_t, previousPipe.NN] = sensor_h
                             # C- line
                             previousPipe.qi[front_t,  previousPipe.NN] = previousPipe.QCPi(
-                                front_t,  previousPipe.NN) - previousPipe.CQPi(front_t,  previousPipe.NN) * sensor_data[kk][front_t]
+                                front_t,  previousPipe.NN) - previousPipe.CQPi(front_t,  previousPipe.NN) * sensor_h
                             pipe.qi[front_t, pipe.NN] = -previousPipe.qi[front_t, previousPipe.NN]
                 elif node.type == BD.Branch:
                     node.cross_branch_i(front_t, sensor_h)
                 elif node.type == BD.UpperReservoir:
                     pipe = node.end_p[0]
-                    pipe.hi[front_t, 0] = sensor_data[kk][front_t]
-                    pipe.qi[front_t, 0] = pipe.QCMi(front_t, 0) + pipe.CQMi(front_t, 0) * sensor_data[kk][front_t]
+                    pipe.hi[front_t, 0] = sensor_h
+                    pipe.qi[front_t, 0] = pipe.QCMi(front_t, 0) + pipe.CQMi(front_t, 0) * sensor_h
                 elif node.type == BD.LowerReservoir:
                     pipe = node.start_p[0]
                     NN = pipe.NN
-                    pipe.hi[front_t, NN] = sensor_data[kk][front_t]
-                    pipe.qi[front_t, NN] = pipe.QCPi(front_t, NN) - pipe.CQPi(front_t, NN) * sensor_data[kk][front_t]
+                    pipe.hi[front_t, NN] = sensor_h
+                    pipe.qi[front_t, NN] = pipe.QCPi(front_t, NN) - pipe.CQPi(front_t, NN) * sensor_h
                 else:
                     print('Undefined sensor node!')
 
@@ -244,12 +300,12 @@ class EMOC():
                     self.update_pipe(pipe, ti)
                     for xx in range(pipe.NN):
                         if np.isnan(pipe.hi[pipe.front_t[xx]+ti,xx]) and pipe.front_t[xx]+ti>=0:
-                            print("Illegal values in Step 2 for pipe "+ str(pipe.id))
+                            print("Illegal values in Step 2 for pipe "+ str(pipe.id)+' at steps '+str(ti))
                             exit(0)
                             pass
                         
             '''Step 3: update front in non-sensor-boundary pipes using MOC'''
-            for i in range(min_front, max_front + 1):
+            for i in range(self.min_front, self.max_front + 1):
                 front_t = ti + i
                 # skip the points where the front <=0
                 if front_t < 1:
@@ -268,7 +324,11 @@ class EMOC():
                             if pipe.front_t.max() == i:
                                 if node.id == pipe.je:
                                     sp = pipe
-                                    sensor_h = self.sensor_data[sensor_ind][front_t]
+                                    if steady:
+                                        sensor_h = self.sensor_data[sensor_ind][0]
+                                    else:
+                                        sensor_h = self.sensor_data[sensor_ind][front_t]
+                                    # sensor_h = self.sensor_data[sensor_ind][front_t]
                                     sp.hi[front_t, sp.NN] = sensor_h
                                     sp.qi[front_t, sp.NN] = sp.QCPi(front_t, sp.NN) - \
                                         sp.CQPi(front_t, sp.NN) * sp.hi[front_t, sp.NN]
@@ -276,11 +336,16 @@ class EMOC():
                                         pass
                                 else:
                                     ep = pipe
-                                    sensor_h = self.sensor_data[sensor_ind][front_t]
+                                    if steady:
+                                        sensor_h = self.sensor_data[sensor_ind][0]
+                                    else:
+                                        sensor_h = self.sensor_data[sensor_ind][front_t]
+                                    # sensor_h = self.sensor_data[sensor_ind][front_t]
                                     ep.hi[front_t, 0] = sensor_h
                                     ep.qi[front_t, 0] = ep.QCMi(front_t, 0) + ep.CQMi(front_t, 0) * ep.hi[front_t, 0]
                                     if np.isnan(pipe.hi[front_t, 0] ) or np.isnan(pipe.qi[front_t, 0] ):
                                           a=1
+                                          
                         a=1
                     elif node.id in self.unknowns:
                         pass
@@ -350,31 +415,58 @@ class EMOC():
                         pass
     
     def input_initial_condition(self):
+        
         '''input initial condition'''
         if self.ini_data is not None:
-            self.model.inv_state_var(self.ini_data)
+            # self.model.inv_state_var(self.ini_data)
             for i in range(self.nPipes):
                 # i is the pipe index, 0 is the time step, 1::2 is the index of flow
-                self.pipes[i].qi[0, :] = self.model.pipes[i].Q[ :]
-                self.pipes[i].hi[0, :] =  self.model.pipes[i].H[ :] # ::2 is the index of head
+                self.pipes[i].qi[0, :] = self.ini_data[i][1::2]
+                self.pipes[i].hi[0, :] = self.ini_data[i][::2] # ::2 is the index of head
+                # self.pipes[i].qi[0, :] = self.model.pipes[i].Q[ :]
+                # self.pipes[i].hi[0, :] =  self.model.pipes[i].H[ :] # ::2 is the index of head
         elif self.ini_data_name is not None:
             init_dataset=[]
-            for i in range(self.nPipes):
-                init_dataset += [np.load(data_root_path + self.ini_data_name + '_pipe' + str(i) + '.npy')[:, 1:]]
-                self.pipes[i].qi[0, :] = init_dataset[i][0, 1::2]
-                self.pipes[i].hi[0, :] = init_dataset[i][0, ::2]  # ::2 is the index of head
+            loaded_data=np.load(data_root_path + self.ini_data_name + '_pipes_data.npz')
+            for i in range(self.model.n_pipe):
+                array_name = f'pipe{i}'
+                loaded_array = loaded_data[array_name][:,1:]
+                init_dataset.append(loaded_array)
+                self.pipes[i].qi[0, :] = loaded_array[0, 1::2]
+                self.pipes[i].hi[0, :] = loaded_array[0, ::2]  # ::2 is the index of head
+            # for i in range(self.nPipes):
+            #     init_dataset += [np.load(data_root_path + self.ini_data_name + '_pipe' + str(i) + '.npy')[:, 1:]]
+            #     self.pipes[i].qi[0, :] = init_dataset[i][0, 1::2]
+            #     self.pipes[i].hi[0, :] = init_dataset[i][0, ::2]  # ::2 is the index of head
         elif self.mode == 'delta':
             for i in range(self.nPipes):
                 self.pipes[i].qi[0, :] = 0
                 self.pipes[i].hi[0, :] = 0 # ::2 is the index of head
             return
-        else:
+        elif osp.exists(data_root_path+self.name+self.sensor_name+'_pipes_steady_dataQ.npz'):
+                save_file=data_root_path+self.name+self.sensor_name+'_pipes_steady_dataQ.npz'
+                print("Using Cached file: {}".format(save_file))
+                loaded_inidataQ=np.load(save_file)
+                loaded_inidataH=np.load(save_file[:-5]+'H.npz')
+                for i,pipe in enumerate(self.pipes):
+                    array_nameH = f'pipeH{pipe.id}'
+                    array_nameQ = f'pipeQ{pipe.id}'
+                    loaded_arrayH = loaded_inidataH[array_nameH]
+                    loaded_arrayQ = loaded_inidataQ[array_nameQ]
+                    pipe.qi[0, :] = loaded_arrayQ
+                    pipe.hi[0, :] = loaded_arrayH # ::2 is the index of head
+
+        else: 
+             
             for i in range(self.nPipes):
                 # i is the pipe index, 0 is the time step, 1::2 is the index of flow
                 self.pipes[i].qi[0, :] = self.data[i][0, 1::2]
                 self.pipes[i].hi[0, :] = self.data[i][0, ::2]  # ::2 is the index of head
             
-    def initialize_known_zone(self):
+                # self.pipes[i].qi[0, :] = 0.
+                # self.pipes[i].hi[0, :] =0
+            
+    def initialize_solvable_region(self,steady=False):
         ''' This function is used to calculate the state until the time steps of max_init_time'''
         model = self.model
         pipes = self.pipes
@@ -385,10 +477,10 @@ class EMOC():
             for k in range(nPipes):
                 pipe = pipes[k]
                 for j in range(1, pipe.NN ):
-                    if j < pipe.NN:
-                        pipe.hi[in_t, j] = (pipe.QCPi(in_t, j) - pipe.QCMi(in_t, j)) / \
-                                            (pipe.CQPi(in_t, j) + pipe.CQMi(in_t, j))
-                        pipe.qi[in_t, j] = pipe.QCPi(in_t, j) - pipe.CQPi(in_t, j) * pipe.hi[in_t, j]
+                    pipe.hi[in_t, j] = (pipe.QCPi(in_t, j) - pipe.QCMi(in_t, j)) / \
+                                        (pipe.CQPi(in_t, j) + pipe.CQMi(in_t, j))
+                    pipe.qi[in_t, j] = pipe.QCPi(in_t, j) - pipe.CQPi(in_t, j) * pipe.hi[in_t, j]
+
 
             # # calculate the head and flow at boundary nodes
             for node in model.nodes:
@@ -397,7 +489,10 @@ class EMOC():
                 # if not node.isSensor:
                 if node.id in self.sensors:
                     i=self.sensors.index(node.id)
-                    sensor_h = self.sensor_data[i][front_t]
+                    if steady:
+                        sensor_h = self.sensor_data[i][0]
+                    else:
+                        sensor_h = self.sensor_data[i][front_t]
                     for sp in node.start_p:
                         sp.hi[front_t, sp.NN] = sensor_h
                         sp.qi[front_t, sp.NN] = sp.QCPi(front_t, sp.NN) - sp.CQPi(front_t, sp.NN) * sp.hi[front_t, sp.NN]
@@ -432,12 +527,13 @@ class EMOC():
                         if node.type == BD.Demand:
                             node.demand_i(in_t)
                         else:
-                            node.unknown_interior_node_i(in_t)
+                            pass
+                            # node.unknown_interior_node_i(in_t)
 
             for pipe in self.pipes:
-                for xx in range(pipe.NN):
+                for xx in range(pipe.NN+1):
                     for i in range(pipe.front_t[xx]):
-                        if np.isnan(pipe.hi[i,xx]):
+                        if np.isnan(pipe.hi[i,xx]) or np.isnan(pipe.qi[i,xx]) :
                             print("Invalid value in initializating the known zone for pipe " +str(pipe.id))          
 
     def update_pipe(self,pipe,ti):
@@ -607,9 +703,9 @@ class EMOC():
             self.delta_new_front[i]= node.front_t.min()-min_level #
             if len(self.pipe_routes[i])==0:
                 self.delta_new_front[i]=self.model.total_seg
-        self.print_front('Modified front')
+        # self.print_front('Modified front')
         self.find_front()
-        self.print_front("2nd find front")
+        # self.print_front("2nd find front")
         max_f=0
         for i,j in enumerate(self.delta_new_front):
             if len(self.pipe_routes[i])==0:
@@ -622,7 +718,7 @@ class EMOC():
         # update the front at nodes
         for node in self.nodes:
             self.update_node_front(node) 
-        self.print_front("Maximum font at unknown nodes is 0")
+        self.print_front("Front:")
     
     def update_node_front(self,node):
         for i, pipe in enumerate(node.pipes):
@@ -696,7 +792,7 @@ class EMOC():
         '''run MOC'''
         model = self.model
         pipes = self.pipes
-        self.initialize_known_zone()
+        self.initialize_solvable_region()
         ''' Find nan
             The last point which the flow and head are not Nan is the front
             It represents the last point where the information from known IC/BC can reach'''
@@ -733,22 +829,26 @@ class EMOC():
         for pipe in self.pipes:
             print("pipe" + str(pipe.id) + ": ", pipe.front_t)
 
-    def save_results(self):
-        self.nodesData={}
+    def save_results(self,addname=''):
+        self.nodesDataH={}
+        self.nodesDataQ={}
         for node in self.nodes:
             for pipe in self.pipes:
                 if pipe.js==node.id:
-                    plt.plot(pipe.hi[:self.plotSteps, 0], '--', label='Predicted')
-                    nodeData=pipe.hi[:self.plotSteps, 0]
+                    # plt.plot(pipe.hi[:self.plotSteps, 0], '--', label='Predicted')
+                    nodeDataH=pipe.hi[:self.plotSteps, 0]
+                    nodeDataQ=pipe.qi[:self.plotSteps, 0]
                     break
                 elif pipe.je==node.id:
-                    plt.plot(pipe.hi[:self.plotSteps, -1], '--', label='Predicted')
-                    nodeData=pipe.hi[:self.plotSteps, -1]
+                    # plt.plot(pipe.hi[:self.plotSteps, -1], '--', label='Predicted')
+                    nodeDataH=pipe.hi[:self.plotSteps, -1]
+                    nodeDataQ=pipe.qi[:self.plotSteps, -1]
                     break
+            self.nodesDataH['node'+str(node.id)]=nodeDataH
+            self.nodesDataQ['node'+str(node.id)]=nodeDataQ
 
-            self.nodesData['node'+str(node.id)]=nodeData
-
-        np.savez(data_root_path+'emoc'+self.name+'_'+self.extra_name+'_nodes_data.npz',**self.nodesData)
+        np.savez(data_root_path+'emoc_results_'+self.name+'_'+addname+'_nodes_dataH.npz',**self.nodesDataH)
+        np.savez(data_root_path+'emoc_results_'+self.name+'_'+addname+'_nodes_dataQ.npz',**self.nodesDataQ)
 
   
 

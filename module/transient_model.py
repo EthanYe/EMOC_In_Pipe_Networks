@@ -7,7 +7,7 @@ from module.components import *
 import pandas as pd
 import matplotlib as mpl
 import matplotlib.pyplot as plt
-figure_root_path = '../figures/'
+figure_root_path = 'figures/'
 data_root_path = 'data/'
 config_root_path = 'config/'
 
@@ -22,7 +22,7 @@ class MODE(Enum):
 
 class PipelineSystem(SysParam):
     # 0
-    def __init__(self, name,isRecord=False,isTF=False,isKV=False,isLeak=True,id=0,saveFilePath=None):
+    def __init__(self, name,isRecord=True,isTF=False,isKV=False,isLeak=True,id=0,saveFilePath=None):
         self.name = name
         self.id=id
         self.T = 0
@@ -241,7 +241,7 @@ class PipelineSystem(SysParam):
             self.weighted_adjacency_matrix[je,je]=0
             self.weighted_adjacency_matrix[js,je]=pipe.NN
             self.weighted_adjacency_matrix[je,js]=pipe.NN
-        np.save("adjacency_matrix.npy",self.adjacency_matrix)
+        np.save("data/adjacency_matrix.npy",self.adjacency_matrix)
         a=1
     # 3
     def steady_moc(self, Q, leak=0.00):
@@ -661,6 +661,15 @@ class PipelineSystem(SysParam):
         else:
             print('Unknow mode in run!')
             exit(0)
+        # save results in dicts
+        self.pipesData = {'pipe'+str(i): pipeData for i,pipeData in enumerate(self.recorder)}
+        self.nodesData={}
+        for node in self.nodes:
+            if node.id==node.pipes[0].js:
+                nodeData = self.recorder[node.pipes[0].id][:,1]
+            else:
+                nodeData = self.recorder[node.pipes[0].id][:,-2]
+            self.nodesData['node'+str(node.id)]=nodeData
         # for i in self.demands:
         #     i.plot_demands()
 
@@ -768,20 +777,9 @@ class PipelineSystem(SysParam):
     # 10
     def write_recorder(self, filename=None):
         if filename is None:
-            filename=self.name+'id'+str(self.id)
+            filename=self.name
         else:
-            filename=filename+'id'+str(self.id)
-        self.pipesData = {'pipe'+str(i): pipeData for i,pipeData in enumerate(self.recorder)}
-        self.nodesData={}
-        for node in self.nodes:
-            id=node.id
-            if node.id==node.pipes[0].js:
-                nodeData = self.recorder[node.pipes[0].id][:,1]
-            else:
-                nodeData = self.recorder[node.pipes[0].id][:,-2]
-            self.nodesData['node'+str(node.id)]=nodeData
-        # self.nodesData['demandNode']=self.demands[0].node.id
-        # self.nodesData['demandSize']=self.demands[0].cda2g0
+            filename=filename
         np.savez(filename+'_pipes_data.npz',**self.pipesData)
         np.savez(filename+'_nodes_data.npz',**self.nodesData)
 
