@@ -56,7 +56,7 @@ class Pipe(SysParam):  # Pipe model
     MAX_PIPE = 100
     number = 0
 
-    def __init__(self, id=0, start_node=0, end_node=0, a=0, D=0, length=0, f=0, sigam=0, n=0, z=0, e=0.063, alpha=0, rou=998.1):
+    def __init__(self, id=0, start_node=0, end_node=0, a=0, D=0, length=0, f=0, sigam=0, n=0, z=0, e=0.0063, alpha=0, rou=998.1):
         self.id = id  # ID
         self.js = start_node  # Prenode
         self.je = end_node  # Rear node
@@ -81,15 +81,17 @@ class Pipe(SysParam):  # Pipe model
         self.alpha = alpha
         self.e = e
         self.rou = rou
-        self.get_intermedia_variables()
+        self.get_intermedia_variables(0)
 
-    def get_intermedia_variables(self):
+    def get_intermedia_variables(self,init=1):
         # if SysParam.factor == 'n':
         #     self.f = 8 * self.g * self.n * self.n * (self.D / 4)**(-1.0 / 3.0)
         self.A = SysParam.pi * self.D * self.D / 4  # Area
-        self.NN = round(self.length / self.time_step / self.a)  # Get segments
-        if self.NN == 0:
-            self.NN = 1  # reaches>=1
+        if init==0:
+
+            self.NN = round(self.length / self.time_step / self.a)  # Get segments
+            if self.NN == 0:
+                self.NN = 1  # reaches>=1
 
         # self.a = self.length / self.time_step / self.NN  # Adjuct wave speed
 
@@ -123,7 +125,7 @@ class Pipe(SysParam):  # Pipe model
         # KVmodel
         # KVmodel damping is larger when tau is smaller or J is larger
         self.tau = [1.05]
-        self.J = [4.029e-5]
+        self.J = [1.029e-6]
         self.NK = len(self.tau)
         self.bk = np.zeros((self.NK, self.NN + 1))
         self.b = np.zeros(self.NN + 1)
@@ -228,6 +230,15 @@ class Pipe(SysParam):  # Pipe model
     def QCP(self, J):
         qcp = ((self.Q[J - 1] - self.K[J - 1]) * self.m1 + self.H[J - 1] - self.b[J]) / \
             (self.m1 + self.m2 * abs(self.Q[J - 1] - self.K[J - 1]))
+        
+        # self.m1 = self.a / self.g / self.A  # a/gA
+        # self.m2 = self.time_step * self.f * self.a / 2.0 / self.g / self.D / self.A / self.A  # fadt/(2gDA**2)
+        # self.m3 = self.g * self.A * self.time_step / self.dx  # gAdt/dx
+        # self.m4 = self.time_step * self.f / 2 / self.D / self.A  # dtf/(2DA)
+        # self.m5 = self.a ** 2 * self.time_step / self.g / self.A / self.dx  # a^2dt/gAdx
+        # self.m6 = self.g * self.A * self.time_step   # gAdt
+        # self.m7 = self.a ** 2 * self.time_step / self.g / self.A  # a^2dt/gA
+        # self.m8 = 1 / 2.0 / self.g / self.A / self.A  # 1/2gA^2
         return qcp
 
     def CQP(self, J):
@@ -883,7 +894,7 @@ class Reservoir(SysParam):
     MAX_RESERVOIR = 100
     number = 0
 
-    def __init__(self, id: 'identity', node, water_level=0, water_levels=None, A=0, w=0):
+    def __init__(self, id: 'identity', node, water_level=0, water_levels=None, A=0, w=0,mode=""):
         self.id = id
         self.node_id = node
         self.water_levels = water_levels
@@ -945,41 +956,17 @@ class Reservoir(SysParam):
 
     def moc(self, T):
         self.water_level = self.get_water_levle(time=T)
-        # if T<0.000001:
-        #     self.water_level = 34.79527
-        # lower=int(steps/10)
-        # frac=steps/10.0-lower
-        # self.water_level = self.water_levels[lower] + (self.water_levels[lower]-self.water_levels[lower+1])*frac
         if self.type == RE.Upper:
-            pipe = self.end_p[0]
-            # /*pipe.HP[0] = waterLevel
-            # pipe.QP[0] = pipe.QCM(0) + pipe.CQM(0) * pipe.HP[0]
-            # a2 =  pipe.m8 * pipe.CQM(0)
-            # pipe.QP[0] = (np.sqrt(1 + 4 * a2 * (pipe.QCM(0) + pipe.CQM(0)*self.water_level)) - 1) / 2 / a2
-            # pipe.HP[0] = self.water_level - abs(pipe.QP[0]) * pipe.QP[0] * pipe.m8
             end_p = self.end_p[0]
-            self.noise = np.random.randn(1) * 2
             end_p.KP[0] = 0
-            end_p.HP[0] = self.water_level * 1.0 + self.A * np.sin(self.w * np.pi * T) + 0 * self.noise
+            end_p.HP[0] = self.water_level
             end_p.QP[0] = end_p.QCM(0) + end_p.CQM(0) * end_p.HP[0]
 
         elif self.type == RE.Lower:
             pipe = self.start_p[0]
             NN = pipe.NN
-            pipe.HP[NN] = self.water_level * 1.0 + self.A * np.sin(self.w * np.pi * T)
+            pipe.HP[NN] = self.water_level
             pipe.QP[NN] = pipe.QCP(NN) - pipe.CQP(NN) * pipe.HP[NN]
-
-        # if self.type == RE.Upper:  # Upstream reservoir
-        #     end_p = self.end_p  # Get end pipe object
-        #     end_p.KP[0] = 0
-        #     end_p.HP[0] = self.water_level
-        #     end_p.QP[0] = end_p.QCM(0) + end_p.CQM(0) * end_p.HP[0]
-        # elif self.type == RE.Lower:  # Downstream reservoir
-        #     start_p = self.start_p  # Get start pipe object
-        #     NN = start_p.NN  # Get segments
-        #     start_p.KP[0] = 0
-        #     start_p.HP[NN] = self.water_level
-        #     start_p.QP[NN] = start_p.QCP(NN) - start_p.CQP(NN) * start_p.HP[NN]
 
     def solve(self, format):
         if format == 'moc' or format == 'lax':
@@ -1055,7 +1042,7 @@ class EndValve(SysParam):
     MAX_ENDVALVE = 100
     number = 0
 
-    def __init__(self, id: 'identity', node_id, tau0=0, amplitude=0,duration=0,z=0,cda=0, closingTime=0, Q0=0, motion='sudden', wf=0, cda_end=0, iscda=False):
+    def __init__(self, id: 'identity', node_id, tau0=0, amplitude=0,duration=0,z=0,cda=0, closingTime=0, Q0=0, motion='sudden', wf=0, cda_end=0, iscda=False,turningPoint=np.array(0)):
         self.id = id
         self.node_id = node_id
         self.closing_time = closingTime
@@ -1069,6 +1056,7 @@ class EndValve(SysParam):
         self.tv = np.linspace(0, self.total_time, self.steps)
         self.taus = np.zeros(self.steps)
         self.z=z
+        self.turningPoint=turningPoint
         if motion == 'sudden':
             self.moc = self.moc_sudden
         elif motion == 'sinusoidal':
@@ -1087,6 +1075,8 @@ class EndValve(SysParam):
             self.moc = self.moc_static
         elif motion == 'udf':
             self.moc = self.moc_udf
+        elif motion=='phase':
+            self.moc = self.moc_phase
         else:
             error("Undefined valve motion")
             # for i in range(self.steps):
@@ -1102,6 +1092,14 @@ class EndValve(SysParam):
         # self.amplitudes=np.abs(self.complex_f)/self.complex_f.shape[0]
         # self.real_f = self.complex_f.real / self.complex_f.shape[0]
         a = 1
+        
+    def init_openings(self):
+        t_tp=np.array(self.turningPoint[0])
+        T_array=np.insert(t_tp,0,0)
+        self.T_array=np.insert(T_array,len(T_array),self.closing_time)
+        opening_tp=np.array(self.turningPoint[1])
+        opening_array=np.insert(opening_tp,0,1)
+        self.opening_array=np.insert(opening_array,len(opening_array),0)
 
     def connect(self, nodes):
         node = nodes[self.node_id]
@@ -1114,7 +1112,7 @@ class EndValve(SysParam):
         else:
             self.end_p = node.pipes[0]
             self.n_ep=node.n_ep
-        node.demand = self.Q0
+        # node.demand = self.Q0
         node.obj = self
 
     def moc_sudden(self, T):   # have not consider the start valve
@@ -1133,6 +1131,12 @@ class EndValve(SysParam):
         else:
             self.moc_cda(self.cda0)
 
+    def moc_phase(self,T):
+        
+        opening=np.interp(T,self.T_array,self.opening_array)
+        cda=opening*self.cda0
+        self.moc_cda(cda)
+
     def moc_sinusoidal(self, T):   # have not consider the start valve
 
         # tau=self.amplitude*np.exp(complex(0,self.wf*2*T))
@@ -1143,7 +1147,19 @@ class EndValve(SysParam):
 
     def moc_udf(self, T):
         T=T
-        cda = (1. + 0.02*(0.2 * np.sin(T * 8) - 0.3 * np.cos(4 * T + np.pi / 2) + 0.2 * np.sin(T * 5)**2 - T * 0.05)) * self.cda0
+
+        if T<10:
+            cda = (1. + 0.2*(0.2 * np.sin(T * 8) - 0.3 * np.cos(4 * T + np.pi / 2) + 0.2 * np.sin(T * 5)**2 - T * 0.05)) * self.cda0
+        elif T<20:
+            cda = (1. + 0.1*(0.3 * np.sin(T * 5) - 0.2 * np.cos(3 * T + np.pi / 2) + 0.25 * np.sin(T * 6)**2)) * self.cda0
+        elif T<30:
+            cda = (1. - 0.1*(0.2 * np.sin(T * 8) - 0.3 * np.cos(4 * T + np.pi / 2) + 0.3 * np.sin(T * 5)**2 )) * self.cda0
+        elif T<40:
+            cda = (1. - 0.16*(0.2 * np.sin(T * 3) + 0.3 * np.cos(4 * T + np.pi / 2) - 0.37 * np.sin(T * 5)**2 )) * self.cda0
+        
+        else:
+            cda = (1. + 0.1*(0.4 * np.sin(T * 3) - 0.3 * np.cos(4 * T + np.pi / 2) + 0.3 * np.sin(T * 5)**2 )) * self.cda0
+        
         self.moc_cda(cda)
 
     def moc_linear(self, T):

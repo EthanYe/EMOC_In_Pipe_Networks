@@ -1,13 +1,13 @@
 import pickle
-# from module.transient_model import *
+from module.transient_model import *
 from module.components import *
 from module.myfun import *
 from module.Floyd import *
 import os.path as osp
-data_root_path='data/'
+
 class EMOC():
-    def __init__(self, sensors, unknowns, name='EMOC_model', dataname=None,  model=None,mode=None,noise=[], parameter_changed_pipes=None, sensor_data=[],ini_data=None,ini_data_name=None,
-                 sensor_data_name=None,extra_sensor=None,extra_sensor_data=[]):
+    def __init__(self, sensors, unknowns, name='EMOC_model', dataname=None,  model=None,mode=None,noise=0, parameter_changed_pipes=None, sensor_data=None,ini_data=None,ini_data_name=None,
+                 sensor_data_name=None,extra_sensor=None,extra_sensor_data=None):
         self.name = name # name of pipe network model
         self.sensors=sensors # sensor locations
         self.unknowns=unknowns # unknown boundary conditions
@@ -56,6 +56,7 @@ class EMOC():
         # define route direction, pipe.dire=1 if the path is from start node to end node, else pipe.dire=-1
         self.define_route_direction()
         # input sensor data
+        # if sensor_data is None:
         self.input_data()
 
     def node_routes_to_pipe_routes(self):
@@ -108,18 +109,20 @@ class EMOC():
         
         if self.dataname != None:
             
-            loaded_data=np.load(data_root_path + self.dataname +'id'+str(self.model.id) + '_pipes_data.npz')
+            loaded_data=np.load(data_root_path + self.dataname + '_pipes_data.npz')
             for i in range(self.model.n_pipe):
                 array_name = f'pipe{i}'
                 loaded_array = loaded_data[array_name][:,1:]
                 self.data.append(loaded_array)
+        elif len(self.sensor_data):
+            return
         else:
-            loaded_data=np.load(data_root_path + self.name+'_pipes_data.npz')
+            loaded_data=np.load(data_root_path + self.name+'id'+str(self.model.id) +'_pipes_data.npz')
             for i in range(self.model.n_pipe):
                 array_name = f'pipe{i}'
                 loaded_array = loaded_data[array_name][:,1:]
                 self.data.append(loaded_array)
-        if self.sensor_data:
+        if self.sensor_data is not None:
         #     self.steps=self.model.steps=self.sensor_data.shape[1]
             if self.mode == 'delta':
                 for i in range(nsensor):
@@ -139,10 +142,10 @@ class EMOC():
             
             elif self.sensors[i] == self.pipes[self.pipe_routes[i][0]].js:
                 self.sensor_data[i] = self.data[self.pipe_routes[i][0]
-                                                ][:, 0][:steps] 
+                                                ][:, 0][:steps] + np.random.random(steps) * self.noise
             else:
                 self.sensor_data[i] = self.data[self.pipe_routes[i][0]][:, -
-                                                                        2][:steps] 
+                                                                        2][:steps] + np.random.random(steps) * self.noise
             if self.mode == 'delta':
                 self.sensor_data[i][0]*=1.05
                 self.sensor_data[i]-=self.sensor_data[i][0]
@@ -153,7 +156,7 @@ class EMOC():
         # get the front by using Nan at unknown boundaries as tracers
         self.delta_new_front = np.zeros(self.nsensor, dtype="int")
         self.find_front()
-        # self.print_front("1st find front")
+        self.print_front("1st find front")
         # update front if the sensor nodes and branch nodes are failed to meet the requirements
         self.update_front()
         
@@ -181,7 +184,7 @@ class EMOC():
             # print('----------------------------------------------------')
             # if stdq>1e-25:  
             for i in range(30):
-                self.initialize_solvable_region(steady=True)
+                self.initialize_known_zone(steady=True)
                 self.emoc_loop(steady=True)
                 stdh=0
                 stdq=0
@@ -193,13 +196,13 @@ class EMOC():
                 print('The '+str(i+1)+'st steady state calculation completed')
                 print("Stand variation: ", stdh,stdq)
                 print('----------------------------------------------------')
-                if stdq<1e-25:
+                if stdq<1e-9:
                     break
             if i>1:
                 self.saveInitialConditions()
             self.isSteady = True
         
-        self.initialize_solvable_region()
+        self.initialize_known_zone()
         self.emoc_loop()
     
     def saveInitialConditions(self):
@@ -463,10 +466,10 @@ class EMOC():
                 self.pipes[i].qi[0, :] = self.data[i][0, 1::2]
                 self.pipes[i].hi[0, :] = self.data[i][0, ::2]  # ::2 is the index of head
             
-                # self.pipes[i].qi[0, :] = 0.
-                # self.pipes[i].hi[0, :] =0
+                # self.pipes[i].qi[0, :] = 0.001
+                # self.pipes[i].hi[0, :] =30
             
-    def initialize_solvable_region(self,steady=False):
+    def initialize_known_zone(self,steady=False):
         ''' This function is used to calculate the state until the time steps of max_init_time'''
         model = self.model
         pipes = self.pipes
@@ -703,9 +706,9 @@ class EMOC():
             self.delta_new_front[i]= node.front_t.min()-min_level #
             if len(self.pipe_routes[i])==0:
                 self.delta_new_front[i]=self.model.total_seg
-        # self.print_front('Modified front')
+        self.print_front('Modified front')
         self.find_front()
-        # self.print_front("2nd find front")
+        self.print_front("2nd find front")
         max_f=0
         for i,j in enumerate(self.delta_new_front):
             if len(self.pipe_routes[i])==0:
@@ -718,7 +721,7 @@ class EMOC():
         # update the front at nodes
         for node in self.nodes:
             self.update_node_front(node) 
-        self.print_front("Front:")
+        self.print_front("Maximum font at unknown nodes is 0")
     
     def update_node_front(self,node):
         for i, pipe in enumerate(node.pipes):
@@ -792,7 +795,7 @@ class EMOC():
         '''run MOC'''
         model = self.model
         pipes = self.pipes
-        self.initialize_solvable_region()
+        self.initialize_known_zone()
         ''' Find nan
             The last point which the flow and head are not Nan is the front
             It represents the last point where the information from known IC/BC can reach'''
@@ -850,5 +853,19 @@ class EMOC():
         np.savez(data_root_path+'emoc_results_'+self.name+'_'+addname+'_nodes_dataH.npz',**self.nodesDataH)
         np.savez(data_root_path+'emoc_results_'+self.name+'_'+addname+'_nodes_dataQ.npz',**self.nodesDataQ)
 
-  
+    def loadResults(self,filename):
+        loaded_H=np.load(data_root_path+filename+"_nodes_dataH.npz")
+        for node in self.nodes:
+            for pipe in self.pipes:
+                array_nameH = f'node{node.id}'
+                loaded_arrayH = loaded_H[array_nameH]
+                self.plotSteps=loaded_arrayH.shape[0]
+                if pipe.js==node.id:
+                    # plt.plot(pipe.hi[:self.plotSteps, 0], '--', label='Predicted')
+                    pipe.hi[:self.plotSteps, 0]=loaded_arrayH
+                    break
+                elif pipe.je==node.id:
+                    # plt.plot(pipe.hi[:self.plotSteps, -1], '--', label='Predicted')
+                    nodeDataH=pipe.hi[:self.plotSteps, -1]=loaded_arrayH
+                    break
 

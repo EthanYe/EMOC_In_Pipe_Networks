@@ -1,0 +1,921 @@
+{
+    "control parameters": {
+        "time step": 0.1,
+        "total time": 50,
+        "gravity": 9.81,
+        "friction factor": "f",
+        "unit": "US"
+    },
+    "pipes": [
+        {
+            "id": 0,
+            "js": 14,
+            "je": 52,
+            "wavespeed": 1000,
+            "diameter": 12.0,
+            "length": 4530.0,
+            "f": 0.022
+        },
+        {
+            "id": 1,
+            "js": 13,
+            "je": 15,
+            "wavespeed": 1000,
+            "diameter": 8.0,
+            "length": 510.0,
+            "f": 0.022
+        },
+        {
+            "id": 2,
+            "js": 15,
+            "je": 14,
+            "wavespeed": 1000,
+            "diameter": 8.0,
+            "length": 99.9,
+            "f": 0.022
+        },
+        {
+            "id": 3,
+            "js": 0,
+            "je": 11,
+            "wavespeed": 1000,
+            "diameter": 12.0,
+            "length": 1190.0,
+            "f": 0.022
+        },
+        {
+            "id": 4,
+            "js": 11,
+            "je": 13,
+            "wavespeed": 1000,
+            "diameter": 12.0,
+            "length": 210.0,
+            "f": 0.022
+        },
+        {
+            "id": 5,
+            "js": 26,
+            "je": 9,
+            "wavespeed": 1000,
+            "diameter": 24.0,
+            "length": 760.0,
+            "f": 0.022
+        },
+        {
+            "id": 6,
+            "js": 9,
+            "je": 10,
+            "wavespeed": 1000,
+            "diameter": 30.0,
+            "length": 500.0,
+            "f": 0.022
+        },
+        {
+            "id": 7,
+            "js": 8,
+            "je": 9,
+            "wavespeed": 1000,
+            "diameter": 30.0,
+            "length": 1270.0,
+            "f": 0.022
+        },
+        {
+            "id": 8,
+            "js": 16,
+            "je": 22,
+            "wavespeed": 1000,
+            "diameter": 8.0,
+            "length": 99.9,
+            "f": 0.022
+        },
+        {
+            "id": 9,
+            "js": 7,
+            "je": 8,
+            "wavespeed": 1000,
+            "diameter": 8.0,
+            "length": 300.0,
+            "f": 0.022
+        },
+        {
+            "id": 10,
+            "js": 23,
+            "je": 8,
+            "wavespeed": 1000,
+            "diameter": 30.0,
+            "length": 590.0,
+            "f": 0.022
+        },
+        {
+            "id": 11,
+            "js": 5,
+            "je": 6,
+            "wavespeed": 1000,
+            "diameter": 14.0,
+            "length": 490.0,
+            "f": 0.022
+        },
+        {
+            "id": 12,
+            "js": 4,
+            "je": 5,
+            "wavespeed": 1000,
+            "diameter": 14.0,
+            "length": 150.0,
+            "f": 0.022
+        },
+        {
+            "id": 13,
+            "js": 3,
+            "je": 4,
+            "wavespeed": 1000,
+            "diameter": 30.0,
+            "length": 430.0,
+            "f": 0.022
+        },
+        {
+            "id": 14,
+            "js": 2,
+            "je": 3,
+            "wavespeed": 1000,
+            "diameter": 30.0,
+            "length": 2000.0,
+            "f": 0.022
+        },
+        {
+            "id": 15,
+            "js": 1,
+            "je": 19,
+            "wavespeed": 1000,
+            "diameter": 12.0,
+            "length": 1660.0,
+            "f": 0.022
+        },
+        {
+            "id": 16,
+            "js": 25,
+            "je": 26,
+            "wavespeed": 1000,
+            "diameter": 8.0,
+            "length": 1290.0,
+            "f": 0.022
+        },
+        {
+            "id": 17,
+            "js": 50,
+            "je": 49,
+            "wavespeed": 1000,
+            "diameter": 12.0,
+            "length": 300.0,
+            "f": 0.022
+        },
+        {
+            "id": 18,
+            "js": 4,
+            "je": 23,
+            "wavespeed": 1000,
+            "diameter": 30.0,
+            "length": 1200.0,
+            "f": 0.022
+        },
+        {
+            "id": 19,
+            "js": 53,
+            "je": 52,
+            "wavespeed": 1000,
+            "diameter": 12.0,
+            "length": 645.0,
+            "f": 0.022
+        },
+        {
+            "id": 20,
+            "js": 53,
+            "je": 49,
+            "wavespeed": 1000,
+            "diameter": 8.0,
+            "length": 2230.0,
+            "f": 0.022
+        },
+        {
+            "id": 21,
+            "js": 12,
+            "je": 26,
+            "wavespeed": 1000,
+            "diameter": 24.0,
+            "length": 290.0,
+            "f": 0.022
+        },
+        {
+            "id": 22,
+            "js": 25,
+            "je": 17,
+            "wavespeed": 1000,
+            "diameter": 12.0,
+            "length": 646.0,
+            "f": 0.022
+        },
+        {
+            "id": 23,
+            "js": 19,
+            "je": 24,
+            "wavespeed": 1000,
+            "diameter": 12.0,
+            "length": 1170.0,
+            "f": 0.022
+        },
+        {
+            "id": 24,
+            "js": 23,
+            "je": 24,
+            "wavespeed": 1000,
+            "diameter": 8.0,
+            "length": 1580.0,
+            "f": 0.022
+        },
+        {
+            "id": 25,
+            "js": 40,
+            "je": 41,
+            "wavespeed": 1000,
+            "diameter": 12.0,
+            "length": 1450.0,
+            "f": 0.022
+        },
+        {
+            "id": 26,
+            "js": 42,
+            "je": 41,
+            "wavespeed": 1000,
+            "diameter": 8.0,
+            "length": 1100.0,
+            "f": 0.022
+        },
+        {
+            "id": 27,
+            "js": 42,
+            "je": 43,
+            "wavespeed": 1000,
+            "diameter": 10.0,
+            "length": 1100.0,
+            "f": 0.022
+        },
+        {
+            "id": 28,
+            "js": 42,
+            "je": 44,
+            "wavespeed": 1000,
+            "diameter": 10.0,
+            "length": 925.0,
+            "f": 0.022
+        },
+        {
+            "id": 29,
+            "js": 39,
+            "je": 42,
+            "wavespeed": 1000,
+            "diameter": 10.0,
+            "length": 1390.0,
+            "f": 0.022
+        },
+        {
+            "id": 30,
+            "js": 39,
+            "je": 40,
+            "wavespeed": 1000,
+            "diameter": 12.0,
+            "length": 100.0,
+            "f": 0.022
+        },
+        {
+            "id": 31,
+            "js": 37,
+            "je": 40,
+            "wavespeed": 1000,
+            "diameter": 12.0,
+            "length": 430.0,
+            "f": 0.022
+        },
+        {
+            "id": 32,
+            "js": 38,
+            "je": 39,
+            "wavespeed": 1000,
+            "diameter": 10.0,
+            "length": 445.0,
+            "f": 0.022
+        },
+        {
+            "id": 33,
+            "js": 38,
+            "je": 27,
+            "wavespeed": 1000,
+            "diameter": 12.0,
+            "length": 2200.0,
+            "f": 0.022
+        },
+        {
+            "id": 34,
+            "js": 37,
+            "je": 38,
+            "wavespeed": 1000,
+            "diameter": 12.0,
+            "length": 350.0,
+            "f": 0.022
+        },
+        {
+            "id": 35,
+            "js": 36,
+            "je": 37,
+            "wavespeed": 1000,
+            "diameter": 12.0,
+            "length": 510.0,
+            "f": 0.022
+        },
+        {
+            "id": 36,
+            "js": 36,
+            "je": 33,
+            "wavespeed": 1000,
+            "diameter": 8.0,
+            "length": 790.0,
+            "f": 0.022
+        },
+        {
+            "id": 37,
+            "js": 35,
+            "je": 36,
+            "wavespeed": 1000,
+            "diameter": 12.0,
+            "length": 2080.0,
+            "f": 0.022
+        },
+        {
+            "id": 38,
+            "js": 33,
+            "je": 34,
+            "wavespeed": 1000,
+            "diameter": 12.0,
+            "length": 1960.0,
+            "f": 0.022
+        },
+        {
+            "id": 39,
+            "js": 32,
+            "je": 33,
+            "wavespeed": 1000,
+            "diameter": 8.0,
+            "length": 2200.0,
+            "f": 0.022
+        },
+        {
+            "id": 40,
+            "js": 29,
+            "je": 30,
+            "wavespeed": 1000,
+            "diameter": 12.0,
+            "length": 1560.0,
+            "f": 0.022
+        },
+        {
+            "id": 41,
+            "js": 29,
+            "je": 28,
+            "wavespeed": 1000,
+            "diameter": 14.0,
+            "length": 2050.0,
+            "f": 0.022
+        },
+        {
+            "id": 42,
+            "js": 31,
+            "je": 29,
+            "wavespeed": 1000,
+            "diameter": 16.0,
+            "length": 1660.0,
+            "f": 0.022
+        },
+        {
+            "id": 43,
+            "js": 32,
+            "je": 31,
+            "wavespeed": 1000,
+            "diameter": 16.0,
+            "length": 4285.0,
+            "f": 0.022
+        },
+        {
+            "id": 44,
+            "js": 35,
+            "je": 32,
+            "wavespeed": 1000,
+            "diameter": 16.0,
+            "length": 990.0,
+            "f": 0.022
+        },
+        {
+            "id": 45,
+            "js": 45,
+            "je": 35,
+            "wavespeed": 1000,
+            "diameter": 16.0,
+            "length": 1210.0,
+            "f": 0.022
+        },
+        {
+            "id": 46,
+            "js": 46,
+            "je": 45,
+            "wavespeed": 1000,
+            "diameter": 12.0,
+            "length": 885.0,
+            "f": 0.022
+        },
+        {
+            "id": 47,
+            "js": 47,
+            "je": 46,
+            "wavespeed": 1000,
+            "diameter": 12.0,
+            "length": 510.0,
+            "f": 0.022
+        },
+        {
+            "id": 48,
+            "js": 49,
+            "je": 48,
+            "wavespeed": 1000,
+            "diameter": 12.0,
+            "length": 1430.0,
+            "f": 0.022
+        },
+        {
+            "id": 49,
+            "js": 48,
+            "je": 47,
+            "wavespeed": 1000,
+            "diameter": 12.0,
+            "length": 450.0,
+            "f": 0.022
+        },
+        {
+            "id": 50,
+            "js": 52,
+            "je": 48,
+            "wavespeed": 1000,
+            "diameter": 12.0,
+            "length": 1200.0,
+            "f": 0.022
+        },
+        {
+            "id": 51,
+            "js": 54,
+            "je": 53,
+            "wavespeed": 1000,
+            "diameter": 12.0,
+            "length": 725.0,
+            "f": 0.022
+        },
+        {
+            "id": 52,
+            "js": 50,
+            "je": 51,
+            "wavespeed": 1000,
+            "diameter": 24.0,
+            "length": 120.0,
+            "f": 0.022
+        },
+        {
+            "id": 53,
+            "js": 54,
+            "je": 50,
+            "wavespeed": 1000,
+            "diameter": 24.0,
+            "length": 630.0,
+            "f": 0.022
+        },
+        {
+            "id": 54,
+            "js": 10,
+            "je": 54,
+            "wavespeed": 1000,
+            "diameter": 24.0,
+            "length": 4000.0,
+            "f": 0.022
+        },
+        {
+            "id": 55,
+            "js": 21,
+            "je": 18,
+            "wavespeed": 1000,
+            "diameter": 12.0,
+            "length": 1150.0,
+            "f": 0.022
+        },
+        {
+            "id": 56,
+            "js": 3,
+            "je": 20,
+            "wavespeed": 1000,
+            "diameter": 8.0,
+            "length": 2300.0,
+            "f": 0.022
+        },
+        {
+            "id": 57,
+            "js": 19,
+            "je": 20,
+            "wavespeed": 1000,
+            "diameter": 12.0,
+            "length": 360.0,
+            "f": 0.022
+        },
+        {
+            "id": 58,
+            "js": 18,
+            "je": 19,
+            "wavespeed": 1000,
+            "diameter": 12.0,
+            "length": 520.0,
+            "f": 0.022
+        },
+        {
+            "id": 59,
+            "js": 24,
+            "je": 17,
+            "wavespeed": 1000,
+            "diameter": 12.0,
+            "length": 1230.0,
+            "f": 0.022
+        },
+        {
+            "id": 60,
+            "js": 18,
+            "je": 16,
+            "wavespeed": 1000,
+            "diameter": 12.0,
+            "length": 2560.0,
+            "f": 0.022
+        },
+        {
+            "id": 61,
+            "js": 8,
+            "je": 25,
+            "wavespeed": 1000,
+            "diameter": 12.0,
+            "length": 646.0,
+            "f": 0.022
+        },
+        {
+            "id": 62,
+            "js": 17,
+            "je": 16,
+            "wavespeed": 1000,
+            "diameter": 8.0,
+            "length": 500.0,
+            "f": 0.022
+        },
+        
+        {
+            "id": 63,
+            "js": 22,
+            "je": 15,
+            "wavespeed": 1000,
+            "diameter": 12.0,
+            "length": 1325.0,
+            "f": 0.022
+        }
+    ],
+    
+    "coordinates": [
+        {
+            "node": 49,
+            "epa_node": 1023,
+            "X-coord": 31.07,
+            "Y-coord": 8.29
+        },
+        {
+            "node": 53,
+            "epa_node": 1027,
+            "X-coord": 29.16,
+            "Y-coord": 7.38
+        },
+        {
+            "node": 26,
+            "epa_node": 271,
+            "X-coord": 26.14,
+            "Y-coord": 11.17
+        },
+        {
+            "node": 25,
+            "epa_node": 269,
+            "X-coord": 25.03,
+            "Y-coord": 12.14
+        },
+        {
+            "node": 24,
+            "epa_node": 267,
+            "X-coord": 23.38,
+            "Y-coord": 12.95
+        },
+        {
+            "node": 23,
+            "epa_node": 265,
+            "X-coord": 25.39,
+            "Y-coord": 13.6
+        },
+        {
+            "node": 42,
+            "epa_node": 1015,
+            "X-coord": 33.51,
+            "Y-coord": 2.45
+        },
+        {
+            "node": 43,
+            "epa_node": 1016,
+            "X-coord": 32.17,
+            "Y-coord": 1.88
+        },
+        {
+            "node": 41,
+            "epa_node": 1014,
+            "X-coord": 34.15,
+            "Y-coord": 1.1
+        },
+        {
+            "node": 40,
+            "epa_node": 1013,
+            "X-coord": 35.02,
+            "Y-coord": 1.81
+        },
+        {
+            "node": 39,
+            "epa_node": 1012,
+            "X-coord": 35.02,
+            "Y-coord": 2.05
+        },
+        {
+            "node": 27,
+            "epa_node": 1000,
+            "X-coord": 37.04,
+            "Y-coord": 0.0
+        },
+        {
+            "node": 38,
+            "epa_node": 1011,
+            "X-coord": 35.87,
+            "Y-coord": 2.11
+        },
+        {
+            "node": 37,
+            "epa_node": 1010,
+            "X-coord": 35.76,
+            "Y-coord": 2.31
+        },
+        {
+            "node": 36,
+            "epa_node": 1009,
+            "X-coord": 35.37,
+            "Y-coord": 3.08
+        },
+        {
+            "node": 34,
+            "epa_node": 1007,
+            "X-coord": 38.38,
+            "Y-coord": 2.54
+        },
+        {
+            "node": 33,
+            "epa_node": 1006,
+            "X-coord": 36.16,
+            "Y-coord": 3.49
+        },
+        {
+            "node": 30,
+            "epa_node": 1003,
+            "X-coord": 43.53,
+            "Y-coord": 7.38
+        },
+        {
+            "node": 28,
+            "epa_node": 1001,
+            "X-coord": 44.86,
+            "Y-coord": 9.32
+        },
+        {
+            "node": 29,
+            "epa_node": 1002,
+            "X-coord": 42.11,
+            "Y-coord": 8.67
+        },
+        {
+            "node": 31,
+            "epa_node": 1004,
+            "X-coord": 39.95,
+            "Y-coord": 8.73
+        },
+        {
+            "node": 32,
+            "epa_node": 1005,
+            "X-coord": 35.26,
+            "Y-coord": 6.16
+        },
+        {
+            "node": 35,
+            "epa_node": 1008,
+            "X-coord": 34.2,
+            "Y-coord": 5.54
+        },
+        {
+            "node": 45,
+            "epa_node": 1019,
+            "X-coord": 33.76,
+            "Y-coord": 6.59
+        },
+        {
+            "node": 46,
+            "epa_node": 1020,
+            "X-coord": 32.54,
+            "Y-coord": 6.81
+        },
+        {
+            "node": 48,
+            "epa_node": 1022,
+            "X-coord": 31.0,
+            "Y-coord": 6.61
+        },
+        {
+            "node": 47,
+            "epa_node": 1021,
+            "X-coord": 31.66,
+            "Y-coord": 6.64
+        },
+        {
+            "node": 52,
+            "epa_node": 1026,
+            "X-coord": 29.2,
+            "Y-coord": 6.46
+        },
+        {
+            "node": 22,
+            "epa_node": 204,
+            "X-coord": 23.81,
+            "Y-coord": 10.69
+        },
+        {
+            "node": 51,
+            "epa_node": 1025,
+            "X-coord": 31.14,
+            "Y-coord": 8.89
+        },
+        {
+            "node": 50,
+            "epa_node": 1024,
+            "X-coord": 30.89,
+            "Y-coord": 8.57
+        },
+        {
+            "node": 54,
+            "epa_node": 1028,
+            "X-coord": 29.42,
+            "Y-coord": 8.44
+        },
+        {
+            "node": 21,
+            "epa_node": 197,
+            "X-coord": 20.97,
+            "Y-coord": 15.18
+        },
+        {
+            "node": 20,
+            "epa_node": 195,
+            "X-coord": 23.18,
+            "Y-coord": 14.72
+        },
+        {
+            "node": 19,
+            "epa_node": 193,
+            "X-coord": 22.88,
+            "Y-coord": 14.35
+        },
+        {
+            "node": 18,
+            "epa_node": 191,
+            "X-coord": 22.1,
+            "Y-coord": 14.07
+        },
+        {
+            "node": 17,
+            "epa_node": 189,
+            "X-coord": 24.15,
+            "Y-coord": 11.37
+        },
+        {
+            "node": 16,
+            "epa_node": 187,
+            "X-coord": 23.64,
+            "Y-coord": 11.04
+        },
+        {
+            "node": 15,
+            "epa_node": 185,
+            "X-coord": 24.79,
+            "Y-coord": 9.8
+        },
+        {
+            "node": 14,
+            "epa_node": 184,
+            "X-coord": 25.15,
+            "Y-coord": 9.52
+        },
+        {
+            "node": 13,
+            "epa_node": 183,
+            "X-coord": 25.29,
+            "Y-coord": 10.04
+        },
+        {
+            "node": 12,
+            "epa_node": 181,
+            "X-coord": 25.72,
+            "Y-coord": 10.83
+        },
+        {
+            "node": 11,
+            "epa_node": 179,
+            "X-coord": 25.86,
+            "Y-coord": 10.38
+        },
+        {
+            "node": 10,
+            "epa_node": 173,
+            "X-coord": 26.87,
+            "Y-coord": 11.59
+        },
+        {
+            "node": 9,
+            "epa_node": 171,
+            "X-coord": 26.65,
+            "Y-coord": 11.8
+        },
+        {
+            "node": 8,
+            "epa_node": 169,
+            "X-coord": 25.68,
+            "Y-coord": 12.74
+        },
+        {
+            "node": 7,
+            "epa_node": 167,
+            "X-coord": 25.88,
+            "Y-coord": 12.98
+        },
+        {
+            "node": 6,
+            "epa_node": 166,
+            "X-coord": 26.48,
+            "Y-coord": 15.13
+        },
+        {
+            "node": 5,
+            "epa_node": 164,
+            "X-coord": 25.98,
+            "Y-coord": 15.14
+        },
+        {
+            "node": 4,
+            "epa_node": 163,
+            "X-coord": 25.39,
+            "Y-coord": 14.98
+        },
+        {
+            "node": 3,
+            "epa_node": 161,
+            "X-coord": 25.1,
+            "Y-coord": 15.28
+        },
+        {
+            "node": 2,
+            "epa_node": 159,
+            "X-coord": 23.12,
+            "Y-coord": 17.5
+        },
+        {
+            "node": 1,
+            "epa_node": 113,
+            "X-coord": 22.04,
+            "Y-coord": 16.61
+        },
+        {
+            "node": 44,
+            "epa_node": 1017,
+            "X-coord": 33.01,
+            "Y-coord": 3.01
+        },
+        {
+            "node": 0,
+            "epa_node": 40,
+            "X-coord": 27.02,
+            "Y-coord": 9.81
+        }
+    ]
+}

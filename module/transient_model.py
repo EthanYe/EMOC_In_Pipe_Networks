@@ -241,7 +241,7 @@ class PipelineSystem(SysParam):
             self.weighted_adjacency_matrix[je,je]=0
             self.weighted_adjacency_matrix[js,je]=pipe.NN
             self.weighted_adjacency_matrix[je,js]=pipe.NN
-        np.save("data/adjacency_matrix.npy",self.adjacency_matrix)
+        np.save("adjacency_matrix.npy",self.adjacency_matrix)
         a=1
     # 3
     def steady_moc(self, Q, leak=0.00):
@@ -373,6 +373,8 @@ class PipelineSystem(SysParam):
                             self.nodes[i].demand=self.nodes[i].obj.demand = self.nodes[i].obj.cda2g *100
                         else:
                             self.nodes[i].demand=self.nodes[i].obj.demand = self.nodes[i].obj.cda2gt0 *np.sqrt(E[i]- self.nodes[i].obj.z)
+                if self.nodes[i].type ==BD.EndValve and self.nodes[i].obj.Q0:
+                    B[i] -= self.nodes[i].obj.Q0
                 B[i] -= self.nodes[i].demand
                 # 水库单元方程 ΔE(i,i)=0
                 if (self.nodes[i].type == BD.UpperReservoir or self.nodes[i].type == BD.LowerReservoir):  # reservoir
@@ -447,19 +449,45 @@ class PipelineSystem(SysParam):
                 else:
                     s = SY[je, js]
                 pipe.H[j] = pipe.H[j - 1] - s * abs(pipe.Q[j]) * pipe.Q[j] / pipe.NN
+            delta=E[je]-pipe.H[pipe.NN]
+            if abs(delta)>0.01:
+                a=1
+        for node in self.nodes:
+            E=[]
+            for pipe in node.pipes:
+                if node.id==pipe.js:
+                    E.append(pipe.H[0])
+                else:
+                    E.append(pipe.H[pipe.NN])
+            for i in E:
+                delta=i-E[0]
+                if abs(delta)>0.01:
+                    a=1
         # print('unit method:', self.pipes[0].H[0],self.pipes[-1].H[-1], self.pipes[0].Q[0], self.pipes[-1].Q[-1])
         # 保存恒定流状态
         for pipe in self.pipes:
             pipe.H0[:] = pipe.H[:]
             pipe.Q0[:] = pipe.Q[:]
-
+        self.XsH = self.get_state_var(var='H')
+        self.XsQ = self.get_state_var(var='Q')
+        print(self.XsH)
         # # 耦合20 s的特征线法，消除恒定流和非恒定流之间的跳跃
-        # h_s=np.zeros(500)
-        for i in range(5000):
-            self.transient(steady=True)
-            # h_s[i]=self.pipes[0].HP[-1]
-        # plt.plot(h_s)
-        # plt.show()
+        # h_s=np.zeros(5000)
+        # for i in range(5000):
+        #     self.transient(steady=True)
+        #     h_s[i]=self.pipes[0].HP[-1]
+        #     stdq=0
+        #     for pipe in self.pipes:
+        #         stdq+=np.var(pipe.Q)
+           
+            # if stdq<1e-15:
+            #     print("Stand variation: ",stdq)
+            #     print("Steady MOC setps: ",i)
+            #     print('----------------------------------------------------')
+            #     break
+        # if i>1:
+        #     plt.plot(h_s[:i])
+        #     plt.show()
         print('MOC steady:', self.pipes[0].H[0], self.pipes[0].Q[0])
         # 保存恒定流状态
         for pipe in self.pipes:
@@ -487,6 +515,7 @@ class PipelineSystem(SysParam):
         self.XsH = self.get_state_var(var='H')
         self.XsQ = self.get_state_var(var='Q')
         self.Xs = self.get_state_var()
+        # np.save(self.name+'_Xs.npy',self.Xs)
         self.steady_state = True
         
         if self.isTF:
@@ -494,9 +523,236 @@ class PipelineSystem(SysParam):
             self.plot_frequency_diagram()
             self.plot_frequency_response()
         
+    def steady_unit_emoc(self, iniQ=0.08, leak=0.00,unknowns=[],sensors=[],sensor_data=[]):
+        IMAX = 50
+        dim = self.nNodes
+        QS = np.zeros((dim, dim))
+        SY = np.zeros((dim, dim))
+        SJ = np.zeros((dim, dim))
+        S = np.zeros((dim, dim))
+        E = np.zeros(dim)
+        for pipe in self.pipes:
+            # js = pipe.js
+            # je = pipe.je
+            js = pipe.start_node.id
+            je = pipe.end_node.id
+            QS[js, je] = iniQ
+            QS[je, js] = -QS[js, je]
+            # # 沿程损失流量系数
+            SY[js, je] = 8.0 * pipe.f * pipe.length / self.pi / self.pi / pipe.D**5.0 / self.g
+            # # on - way loss factor
+            SY[je, js] = SY[js, je]
+            # # 局部损失流量系数
+            SJ[js, je] = pipe.zeta / 2 / self.g / pipe.A / pipe.A
+            # # 流量系数
+            S[js, je] = SY[js, je] + SJ[js, je]
+            S[je, js] = SY[je, js] + SJ[je, js]
 
+        # #初始化访问变量
+        visit = np.zeros(dim)
+        # 初始化水头，从水库开始遍历
+        for i,id in enumerate(sensors):
+            E[id] = sensor_data[i]
+            visit[id] = True
+            self.Q2E(self.nodes[id], E, S, QS, visit,unknowns)
+
+        # Iteration
+        for iter in range(IMAX):
+            p = np.zeros((dim, dim))
+            q = np.zeros((dim, dim))
+            r = np.zeros((dim, dim))
+            A = np.zeros((dim, dim))
+            B = np.zeros(dim)
+            DE = np.zeros(dim)
+            # p, q, r
+            for pipe in self.pipes:
+                # je = pipe.je
+                # js = pipe.js
+                js = pipe.start_node.id
+                je = pipe.end_node.id
+                s = S[js, je]
+                typeID = self.nodes[je].typeID
+                # 计算能量损失（流量的函数）fQ及其导数
+                fQ = s * abs(QS[js, je]) * QS[js, je]
+                dfQ = 2 * s * abs(QS[js, je])
+                if dfQ == 0:
+                    dfQ = 1E-11
+                if self.nodes[je].type == BD.InlineValve:
+                    sj=self.inlineValves[typeID].s
+                    fQ = fQ+sj * np.abs(QS[js, je] * QS[js, je])
+                    dfQ = dfQ+2 * sj*np.abs(QS[js, je])
+                # elif self.nodes[je].type == BD.EndValve:
+                #     fQ = fQ+sj * np.abs(QS[js, je] * QS[js, je])
+                #     dfQ = dfQ+2 * sj*np.abs(QS[js, je])
+                # fQ,dfQ=nodes[je].get_fQ_dfQ()
+                p[js, je] = 1 / dfQ
+                q[js, je] = -p[js, je]
+                r[js, je] = p[js, je] * (E[js] - E[je] - fQ)
+                p[je, js] = p[js, je]
+                q[je, js] = q[js, je]
+                r[je, js] = -r[js, je]
+            # 计算总体单元矩阵A和B
+            # A(i,i) = 求和 pij ，A(i,j)=q(i, j)
+            # B(i)=ci- 求和 Q - 求和 r
+            for i in range(dim):
+                for j in range(dim):
+                    if i == j:
+                        for k2 in range(dim):
+                            A[i, i] = A[i, i] + p[i, k2]  # total pij of Ei
+                    else:
+                        A[i, j] = q[i, j]  # qif of Ej
+                        B[i] = B[i] - QS[i, j] - r[i, j]
+                if i in unknowns:
+                    for j in range(dim):
+                        if j== sensors[unknowns.index(i)]:
+                            A[i, j] = 1
+                        else:   
+                            A[i, j] = 0
+                    B[i] = 0
+                    continue
+                if self.nodes[i].type == BD.Demand:
+                    # if self.nodes[i].obj.burstTime>0:
+                    #     self.nodes[i].demand=0
+                    # else:
+                        if E[i] - self.nodes[i].obj.z<0:
+                            self.nodes[i].demand=self.nodes[i].obj.demand = self.nodes[i].obj.cda2g *100
+                        else:
+                            self.nodes[i].demand=self.nodes[i].obj.demand = self.nodes[i].obj.cda2gt0 *np.sqrt(E[i]- self.nodes[i].obj.z)
+                if self.nodes[i].type ==BD.EndValve and self.nodes[i].obj.Q0:
+                    B[i] -= self.nodes[i].obj.Q0
+                B[i] -= self.nodes[i].demand
+                # 水库单元方程 ΔE(i,i)=0
+                if (self.nodes[i].type == BD.UpperReservoir or self.nodes[i].type == BD.LowerReservoir):  # reservoir
+                    for j in range(dim):
+                        if i == j:
+                            A[i, j] = 1
+                        else:   
+                            A[i, j] = 0
+                    B[i] = 0
+                # if i in sensors:
+                #     for j in range(dim):
+                #         if i == j:
+                #             A[i, j] = 1
+                #         else:   
+                #             A[i, j] = 0
+                #     B[i] = 0
+            # for i in range(dim):
+            #     if max(A[i]>1E10):
+            #         A[i] /= 1E10
+            #         B[i] /= 1E10
+            # 解单元方程组
+            # print(np.linalg.cond(A))
+            """ solution 1: QR decomposition"""
+            # Perform QR decomposition on A
+            Q, R = np.linalg.qr(A)
+            # Solve the system of linear equations
+            y = np.dot(Q.T, B)
+            try:
+                DE = np.linalg.solve(R, y)
+            except:
+                print("singular matrix")
+                break
+            """ solution 2: normal"""
+            # DE = np.linalg.solve(A, B)
+            # 更新流量
+            for pipe in self.pipes:
+                # js = pipe.js
+                # je = pipe.je
+                js = pipe.start_node.id
+                je = pipe.end_node.id
+                QS[js, je] = QS[js, je] + p[js, je] * DE[js] + q[js, je] * DE[je] + r[js, je]  # flow of every pipe
+                QS[je, js] = -QS[js, je]
+
+            # 更新水头
+            # 初始化访问变量
+            visit = np.zeros(dim)
+            for i,id in enumerate(sensors):
+                E[id] = sensor_data[i]
+                visit[id] = True
+                self.Q2E(self.nodes[id], E, S, QS, visit,unknowns)
+
+
+            # 判断结果精度
+            if (np.max(np.abs(DE)) < 0.000000001 and iter>3):  
+                break
+        if iter<IMAX-1:
+            print("Steady flow completed: " + str(iter))
+        else:
+            print("Steady flow failed!", iter)
+        # print(E,QS)
+        # 利用恒定流计算结果，计算管道的水头、流量
+        for pipe in self.pipes:
+            # js = pipe.js
+            # je = pipe.je
+            js = pipe.start_node.id
+            je = pipe.end_node.id
+            # 管道流量
+            pipe.Q[0] = QS[js, je]
+            # 管道头结点的水头，能量减去速度头
+            # pipe.H[0] = E[js] - pipe.Q[0] * pipe.Q[0] / 2 / self.g / pipe.A / pipe.A
+            pipe.H[0] = E[js]
+            # 从头结点到尾结点，依次计算管道其余节点的水头
+            for j in range(1, pipe.NN+1):
+                # 管道流量不变
+                pipe.Q[j] = pipe.Q[0]
+                # 判断流量方向
+                if pipe.Q[j] > 0:
+                    s = SY[js, je]
+                else:
+                    s = SY[je, js]
+                pipe.H[j] = pipe.H[j - 1] - s * abs(pipe.Q[j]) * pipe.Q[j] / pipe.NN
+            delta=E[je]-pipe.H[pipe.NN]
+            if abs(delta)>0.01:
+                a=1
+        for node in self.nodes:
+            E=[]
+            for pipe in node.pipes:
+                if node.id==pipe.js:
+                    E.append(pipe.H[0])
+                else:
+                    E.append(pipe.H[pipe.NN])
+            for i in E:
+                delta=i-E[0]
+                if abs(delta)>0.01:
+                    a=1
+        # print('unit method:', self.pipes[0].H[0],self.pipes[-1].H[-1], self.pipes[0].Q[0], self.pipes[-1].Q[-1])
+        # 保存恒定流状态
+        for pipe in self.pipes:
+            pipe.H0[:] = pipe.H[:]
+            pipe.Q0[:] = pipe.Q[:]
+        for pipe in self.pipes:
+            for j in range(pipe.NN + 1):
+                pipe.b[j] = 0
+                pipe.epsi[j] = 0
+                for i in range(pipe.NK):  # Update b
+                    pipe.bk[i, j] = pipe.km1[i] * (pipe.H[j] - pipe.H0[j]) - pipe.km2k[i] * \
+                        pipe.H[j] + pipe.km3k[i] * pipe.epsik[i, j]
+                    pipe.b[j] = pipe.b[j] + pipe.bk[i, j]
+                    pipe.epsipk[i, j] = pipe.mm1k[i] * pipe.HP[j] - pipe.J[i] * \
+                        pipe.k3 * pipe.H0[j] - pipe.tau[i] / pipe.k1 * pipe.bk[i, j]
+                    pipe.epsik[i, j] = pipe.epsipk[i, j]
+                    pipe.epsi[j] = pipe.epsi[j] + pipe.epsik[i, j]
+        # # 保存恒定流状态
+        # for pipe in self.pipes:
+        #     pipe.H0[:] = pipe.H[:]
+        #     pipe.Q0[:] = pipe.Q[:]
         
-    def Q2E(self, node, E, S, QS, visit):
+        # print('after moc:', self.pipes[0].H0, self.pipes[0].Q0[0])
+        # initialize Xs (X(0))
+        self.XsH = self.get_state_var(var='H')
+        self.XsQ = self.get_state_var(var='Q')
+        self.Xs = self.get_state_var()
+        np.save(self.name+'_Xs.npy',self.Xs)
+        self.steady_state = True
+        
+        if self.isTF:
+            self.x = self.get_transfer_matrix(4.189)
+            self.plot_frequency_diagram()
+            self.plot_frequency_response()
+        
+     
+        
+    def Q2E(self, node, E, S, QS, visit,unknowns=[]):
         #     # # 目的：通过流量计算各节点的能量
         # # # 输入：流量，流量系数，访问标记序列
         # # # 输出：各节点的能量
@@ -520,7 +776,9 @@ class PipelineSystem(SysParam):
             s = S[n1, n2]
             # 计算单元能量损失
             type = self.nodes[n2].type
-            if type == BD.UpperReservoir:
+            if n2 in unknowns:
+                DH = 0
+            elif type == BD.UpperReservoir:
                 # 上游节点
                 E[n2] = self.reservoirs[typeID].water_level
                 visit[n2] = True
@@ -533,7 +791,7 @@ class PipelineSystem(SysParam):
             elif type == BD.EndValve:
                 # dead end
                 obj = self.endValves[typeID]
-                if obj.motion == 'sinusoidal' or obj.motion == 'sudden' or obj.motion == "linear" or obj.motion == 'closed'or obj.motion == 'udf':
+                if obj.motion == 'sinusoidal' or obj.motion == 'sudden' or obj.motion == 'phase' or obj.motion == "linear" or obj.motion == 'closed'or obj.motion == 'udf':
                     Q = obj.Q0
                     DH = s * abs(Q) * Q - s * abs(QS[n1, n2]) * QS[n1, n2]
                     E[n2] = E[n1] - s * abs(QS[n1, n2]) * QS[n1, n2] - DH
@@ -547,7 +805,7 @@ class PipelineSystem(SysParam):
                         obj.cda0 = np.sqrt(Q**2 / 2 / self.g / E[n2])
                     else:
                         E[n2] = E[n1] - s * abs(QS[n1, n2]) * QS[n1, n2]
-                        Q = obj.cda0*np.sqrt(2 * self.g * E[n2])
+                        obj.Q0=Q = obj.cda0*np.sqrt(2 * self.g * E[n2])
                         DH = s * abs(Q) * Q - s * abs(QS[n1, n2]) * QS[n1, n2]
                         E[n2] = E[n1] - s * abs(QS[n1, n2]) * QS[n1, n2] - DH
                         
@@ -561,7 +819,7 @@ class PipelineSystem(SysParam):
             E[n2] = E[n1] - s * abs(QS[n1, n2]) * QS[n1, n2] - DH
             visit[n2] = True
             # 遍历下一个节点
-            self.Q2E(self.nodes[n2], E, S, QS, visit)
+            self.Q2E(self.nodes[n2], E, S, QS, visit,unknowns)
     # 3
 
     def transient(self, steady=False ,timeup=None   ):
@@ -661,15 +919,6 @@ class PipelineSystem(SysParam):
         else:
             print('Unknow mode in run!')
             exit(0)
-        # save results in dicts
-        self.pipesData = {'pipe'+str(i): pipeData for i,pipeData in enumerate(self.recorder)}
-        self.nodesData={}
-        for node in self.nodes:
-            if node.id==node.pipes[0].js:
-                nodeData = self.recorder[node.pipes[0].id][:,1]
-            else:
-                nodeData = self.recorder[node.pipes[0].id][:,-2]
-            self.nodesData['node'+str(node.id)]=nodeData
         # for i in self.demands:
         #     i.plot_demands()
 
@@ -775,11 +1024,23 @@ class PipelineSystem(SysParam):
                 self.recorder[i][step,2 * j + 2] = pipe.Q[j]
 
     # 10
-    def write_recorder(self, filename=None):
+    def write_recorder(self, filename=None,T=0):
+        startStep=int(T/self.time_step)
         if filename is None:
             filename=self.name
         else:
             filename=filename
+        self.pipesData = {'pipe'+str(i): pipeData[startStep:] for i,pipeData in enumerate(self.recorder)}
+        self.nodesData={}
+        for node in self.nodes:
+            id=node.id
+            if node.id==node.pipes[0].js:
+                nodeData = self.recorder[node.pipes[0].id][startStep:,1]
+            else:
+                nodeData = self.recorder[node.pipes[0].id][startStep:,-2]
+            self.nodesData['node'+str(node.id)]=nodeData
+        # self.nodesData['demandNode']=self.demands[0].node.id
+        # self.nodesData['demandSize']=self.demands[0].cda2g0
         np.savez(filename+'_pipes_data.npz',**self.pipesData)
         np.savez(filename+'_nodes_data.npz',**self.nodesData)
 

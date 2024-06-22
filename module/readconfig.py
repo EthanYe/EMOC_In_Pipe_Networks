@@ -216,6 +216,11 @@ class ReadJson:
         for r in rdict:
             id = r['id']
             node = r['node']
+            if "waterlevel data" in r:
+                if r['waterlevel data']==True:
+                    reservoirs.append(Reservoir(id, node,mode="From data"))
+                    continue
+
             if "water level file" in r:
                 water_levels = np.load(r['water level file']+'.npy')
                 reservoirs.append(Reservoir(id, node, water_levels=water_levels))
@@ -330,6 +335,8 @@ class ReadJson:
             elif motion == "sudden":
                 Q0 = env['Q0']
                 endValves.append(EndValve(id, node, motion=motion, Q0=Q0))
+            elif motion == "phase":
+                endValves.append(EndValve(id, node, motion=motion,closingTime=closingTime, Q0=Q0))
             else:
                 endValves.append(EndValve(id, node, closingTime=closingTime, Q0=Q0))
         return endValves, EndValve.number
