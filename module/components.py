@@ -1143,7 +1143,7 @@ class EndValve(SysParam):
 
     def moc_udf(self, T):
         T=T
-        cda = (1. + 0.2*(0.2 * np.sin(T * 8) - 0.3 * np.cos(4 * T + np.pi / 2) + 0.2 * np.sin(T * 5)**2 - T * 0.05)) * self.cda0
+        cda = (1. + 0.02*(0.2 * np.sin(T * 8) - 0.3 * np.cos(4 * T + np.pi / 2) + 0.2 * np.sin(T * 5)**2 - T * 0.05)) * self.cda0
         self.moc_cda(cda)
 
     def moc_linear(self, T):

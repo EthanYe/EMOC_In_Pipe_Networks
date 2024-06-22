@@ -1,13 +1,13 @@
 import pickle
-from module.transient_model import *
+# from module.transient_model import *
 from module.components import *
 from module.myfun import *
 from module.Floyd import *
 import os.path as osp
-
+data_root_path='data/'
 class EMOC():
-    def __init__(self, sensors, unknowns, name='EMOC_model', dataname=None,  model=None,mode=None,noise=0, parameter_changed_pipes=None, sensor_data=None,ini_data=None,ini_data_name=None,
-                 sensor_data_name=None,extra_sensor=None,extra_sensor_data=None):
+    def __init__(self, sensors, unknowns, name='EMOC_model', dataname=None,  model=None,mode=None,noise=[], parameter_changed_pipes=None, sensor_data=[],ini_data=None,ini_data_name=None,
+                 sensor_data_name=None,extra_sensor=None,extra_sensor_data=[]):
         self.name = name # name of pipe network model
         self.sensors=sensors # sensor locations
         self.unknowns=unknowns # unknown boundary conditions
@@ -119,7 +119,7 @@ class EMOC():
                 array_name = f'pipe{i}'
                 loaded_array = loaded_data[array_name][:,1:]
                 self.data.append(loaded_array)
-        if self.sensor_data is not None:
+        if self.sensor_data:
         #     self.steps=self.model.steps=self.sensor_data.shape[1]
             if self.mode == 'delta':
                 for i in range(nsensor):
@@ -139,10 +139,10 @@ class EMOC():
             
             elif self.sensors[i] == self.pipes[self.pipe_routes[i][0]].js:
                 self.sensor_data[i] = self.data[self.pipe_routes[i][0]
-                                                ][:, 0][:steps] + np.random.random(steps) * self.noise
+                                                ][:, 0][:steps] 
             else:
                 self.sensor_data[i] = self.data[self.pipe_routes[i][0]][:, -
-                                                                        2][:steps] + np.random.random(steps) * self.noise
+                                                                        2][:steps] 
             if self.mode == 'delta':
                 self.sensor_data[i][0]*=1.05
                 self.sensor_data[i]-=self.sensor_data[i][0]
