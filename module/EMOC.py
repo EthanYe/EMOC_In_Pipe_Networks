@@ -114,10 +114,10 @@ class EMOC():
                 array_name = f'pipe{i}'
                 loaded_array = loaded_data[array_name][:,1:]
                 self.data.append(loaded_array)
-        elif len(self.sensor_data):
+        elif self.sensor_data is not None:
             return
         else:
-            loaded_data=np.load(data_root_path + self.name+'id'+str(self.model.id) +'_pipes_data.npz')
+            loaded_data=np.load(data_root_path + self.name+'_pipes_data.npz')
             for i in range(self.model.n_pipe):
                 array_name = f'pipe{i}'
                 loaded_array = loaded_data[array_name][:,1:]
